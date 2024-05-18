@@ -4,7 +4,7 @@
 
 ## Profesores
 ### Titulares: Diego Corsi y Diego Essaya.
-### Corrector: X.
+### Corrector: Santiago Maraggi.
 
 ## Alumnos
 ### Álvarez Julián: Padrón 110825.
