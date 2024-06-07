@@ -111,15 +111,13 @@
 
 
 (defn calcular-limites [camino margen]
-  (let [x1-values (map :x1 camino)
-        x2-values (map :x2 camino)
-        y1-values (map :y1 camino)
-        y2-values (map :y2 camino)
-        min-x (- (apply min (concat x1-values x2-values)) margen)
-        max-x (+ (apply max (concat x1-values x2-values)) margen)
-        min-y (- (apply min (concat y1-values y2-values)) margen)
-        max-y (+ (apply max (concat y1-values y2-values)) margen)]
-    [min-x max-x min-y max-y]))
+      (let [x-values (mapcat [:x1 :x2] camino)
+            y-values (mapcat [:y1 :y2] camino)
+            min-x (- (apply min x-values) margen)
+            max-x (+ (apply max x-values) margen)
+            min-y (- (apply min y-values) margen)
+            max-y (+ (apply max y-values) margen)]
+           [min-x max-x min-y max-y]))
 
 
 (defn generar-svg [camino margen]
