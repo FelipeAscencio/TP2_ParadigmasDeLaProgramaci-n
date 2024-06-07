@@ -55,3 +55,82 @@
           (println "Colección final:")
           (println reglamento-tortuga)))
       (println "Por favor, proporciona el nombre del archivo y el número de iteraciones como argumentos."))))
+
+
+
+(defrecord Tortuga [x y angulo pluma-abajo?])
+
+(defn crear-tortuga [tortuga]
+  (let [nueva-tortuga (assoc tortuga
+                        :x (:x tortuga)
+                        :y (:y tortuga)
+                        :angulo (:angulo tortuga)
+                        :pluma-abajo? (:pluma-abajo? tortuga))]
+    nueva-tortuga))
+
+(defn avanzar [tortuga n]
+  (let [rads (Math/toRadians (:angulo tortuga))
+        dx (* n (Math/cos rads))
+        dy (* n (Math/sin rads))
+        new-x (+ (:x tortuga) dx)
+        new-y (+ (:y tortuga) dy)]
+    (assoc tortuga :x new-x :y new-y)))
+
+(defn gira-derecha [tortuga angulo]
+  (assoc tortuga :angulo (- (:angulo tortuga) angulo)))
+
+(defn gira-izquierda [tortuga angulo]
+  (assoc tortuga :angulo (+ (:angulo tortuga) angulo)))
+
+(defn pluma-arriba [tortuga]
+  (assoc tortuga :pluma-abajo? false))
+
+(defn pluma-abajo [tortuga]
+  (assoc tortuga :pluma-abajo? true))
+
+
+;ver desde aca mas que nada
+(defn actualizar-camino [tortuga nueva-tortuga camino]
+  (conj camino {:x1 (:x tortuga) :y1 (:y tortuga) :x2 (:x nueva-tortuga) :y2 (:y nueva-tortuga)}))
+
+(defn ejecutar-comando2 [comando angulo tortugas camino]
+  (let [tortuga (first tortugas)]
+    (cond
+      (#{\F \G} comando)
+      (let [nueva-tortuga (avanzar tortuga 1)]
+        [(conj (rest tortugas) nueva-tortuga) (actualizar-camino tortuga nueva-tortuga camino)])
+      (#{\f \g} comando)
+      (let [nueva-tortuga (avanzar tortuga 1)]
+        [(conj (rest tortugas) nueva-tortuga) camino])
+      (= comando \+) [(conj (rest tortugas) (gira-derecha tortuga angulo)) camino]
+      (= comando \-) [(conj (rest tortugas) (gira-izquierda tortuga angulo)) camino]
+      (= comando \[) [(conj tortugas (crear-tortuga tortuga)) camino]
+      (= comando \]) [(pop tortugas) camino]
+      (= comando \|) [(conj (rest tortugas) (gira-derecha tortuga 180)) camino]
+      :else [tortugas camino])))
+
+
+(defn calcular-limites [camino margen]
+  (let [x1-values (map :x1 camino)
+        x2-values (map :x2 camino)
+        y1-values (map :y1 camino)
+        y2-values (map :y2 camino)
+        min-x (- (apply min (concat x1-values x2-values)) margen)
+        max-x (+ (apply max (concat x1-values x2-values)) margen)
+        min-y (- (apply min (concat y1-values y2-values)) margen)
+        max-y (+ (apply max (concat y1-values y2-values)) margen)]
+    [min-x max-x min-y max-y]))
+
+
+(defn generar-svg [camino margen]
+  (let [[min-x max-x min-y max-y] (calcular-limites camino margen)
+        view-box (str min-x " " min-y " " (- max-x min-x) " " (- max-y min-y))
+        svg-header (str "<svg viewBox=\"" view-box "\" xmlns=\"http://www.w3.org/2000/svg\">")
+        svg-content (clojure.string/join "" (map #(str "<line x1=\"" (:x1 %) "\" y1=\"" (:y1 %) "\" x2=\"" (:x2 %) "\" y2=\"" (:y2 %) "\" stroke-width=\"1\" stroke=\"black\" />\n") camino))
+        svg-footer "</svg>"]
+    (str svg-header svg-content svg-footer)))
+
+
+(defn guardar-svg-en-archivo [camino nombre-archivo]
+  (let [contenido-svg (generar-svg camino 0)]
+    (spit nombre-archivo contenido-svg)))
