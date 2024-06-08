@@ -33,41 +33,22 @@
       estado-actual
       (recur (aplicar-reglas estado-actual reglas) (dec n)))))
 
-; Esta función construye la colección final con el ángulo y el estado final.
-; Es decir, las reglas y patrones que va a seguir la tortuga.
-(defn construir-reglamento
-  [angulo estado-final]
-  [angulo estado-final])
+; Estructura de la tortuga.
+(defrecord Tortuga [x y angulo])
 
-(defn -main
-  [& args]
-  (let [nombre-archivo (first args)
-        iteraciones (Integer/parseInt (second args))
-        ruta-archivo (str "doc/" nombre-archivo)]
-    (if (and nombre-archivo iteraciones)
-      (let [informacion-parseada (leer-archivo ruta-archivo)
-            [angulo estado-inicial reglas] informacion-parseada]
-        (println "Colección inicial:")
-        (println [iteraciones angulo estado-inicial reglas])
-        (let [estado-final (iteraciones-sistema-l estado-inicial reglas iteraciones)
-              reglamento-tortuga (construir-reglamento angulo estado-final)]
-          (println "Estado final del sistema-L:" estado-final)
-          (println "Colección final:")
-          (println reglamento-tortuga)))
-      (println "Por favor, proporciona el nombre del archivo y el número de iteraciones como argumentos."))))
+; Crea la tortuga inicial.
+(defn crear-tortuga-inicial []
+  (->Tortuga 0 0 270))
 
-
-
-(defrecord Tortuga [x y angulo pluma-abajo?])
-
+; Crea una tortuga nueva a partir de la original.
 (defn crear-tortuga [tortuga]
   (let [nueva-tortuga (assoc tortuga
                         :x (:x tortuga)
                         :y (:y tortuga)
-                        :angulo (:angulo tortuga)
-                        :pluma-abajo? (:pluma-abajo? tortuga))]
+                        :angulo (:angulo tortuga))]
     nueva-tortuga))
 
+; Hace el avance de la tortuga en relación al ángulo actual de la misma.
 (defn avanzar [tortuga n]
   (let [rads (Math/toRadians (:angulo tortuga))
         dx (* n (Math/cos rads))
@@ -76,31 +57,27 @@
         new-y (+ (:y tortuga) dy)]
     (assoc tortuga :x new-x :y new-y)))
 
+; Cambia el ángulo de la tortuga hacia la derecha.
 (defn gira-derecha [tortuga angulo]
   (assoc tortuga :angulo (- (:angulo tortuga) angulo)))
 
+; Cambia el ángulo de la tortuga hacia la izquierda.
 (defn gira-izquierda [tortuga angulo]
   (assoc tortuga :angulo (+ (:angulo tortuga) angulo)))
 
-(defn pluma-arriba [tortuga]
-  (assoc tortuga :pluma-abajo? false))
-
-(defn pluma-abajo [tortuga]
-  (assoc tortuga :pluma-abajo? true))
-
-
-;ver desde aca mas que nada
+; Actualiza el camino actual que "pinto" la tortuga.
 (defn actualizar-camino [tortuga nueva-tortuga camino]
   (conj camino {:x1 (:x tortuga) :y1 (:y tortuga) :x2 (:x nueva-tortuga) :y2 (:y nueva-tortuga)}))
 
-(defn ejecutar-comando2 [comando angulo tortugas camino]
+; Ejecuta el comando recibido por parámetro (carácter del sistema-L).
+(defn ejecutar-comando [comando angulo tortugas camino]
   (let [tortuga (first tortugas)]
     (cond
       (#{\F \G} comando)
-      (let [nueva-tortuga (avanzar tortuga 1)]
+      (let [nueva-tortuga (avanzar tortuga 100)]
         [(conj (rest tortugas) nueva-tortuga) (actualizar-camino tortuga nueva-tortuga camino)])
       (#{\f \g} comando)
-      (let [nueva-tortuga (avanzar tortuga 1)]
+      (let [nueva-tortuga (avanzar tortuga 100)]
         [(conj (rest tortugas) nueva-tortuga) camino])
       (= comando \+) [(conj (rest tortugas) (gira-derecha tortuga angulo)) camino]
       (= comando \-) [(conj (rest tortugas) (gira-izquierda tortuga angulo)) camino]
@@ -109,26 +86,55 @@
       (= comando \|) [(conj (rest tortugas) (gira-derecha tortuga 180)) camino]
       :else [tortugas camino])))
 
+; Función para procesar los comandos generados por el sistema-L y obtener el camino final.
+(defn procesar-comandos [estado-final angulo]
+  (loop [comandos estado-final
+         tortugas [(crear-tortuga-inicial)]
+         camino []]
+    (if (empty? comandos)
+      camino
+      (let [comando (first comandos)
+            [nuevas-tortugas nuevo-camino] (ejecutar-comando comando angulo tortugas camino)]
+        (recur (rest comandos) nuevas-tortugas nuevo-camino)))))
 
+; Calcula la máxima y la mínima posición en "X" e "Y" del camino creado.
 (defn calcular-limites [camino margen]
-      (let [x-values (mapcat [:x1 :x2] camino)
-            y-values (mapcat [:y1 :y2] camino)
-            min-x (- (apply min x-values) margen)
-            max-x (+ (apply max x-values) margen)
-            min-y (- (apply min y-values) margen)
-            max-y (+ (apply max y-values) margen)]
-           [min-x max-x min-y max-y]))
+  (let [x-values (mapcat #(vector (:x1 %) (:x2 %)) camino)
+        y-values (mapcat #(vector (:y1 %) (:y2 %)) camino)
+        min-x (- (apply min x-values) margen)
+        max-x (+ (apply max x-values) margen)
+        min-y (- (apply min y-values) margen)
+        max-y (+ (apply max y-values) margen)]
+    [min-x max-x min-y max-y]))
 
-
+; Traduce el texto (en base al camino y al margen) que va en el archivo "SVG" para crear la imagen.
 (defn generar-svg [camino margen]
   (let [[min-x max-x min-y max-y] (calcular-limites camino margen)
         view-box (str min-x " " min-y " " (- max-x min-x) " " (- max-y min-y))
         svg-header (str "<svg viewBox=\"" view-box "\" xmlns=\"http://www.w3.org/2000/svg\">")
-        svg-content (clojure.string/join "" (map #(str "<line x1=\"" (:x1 %) "\" y1=\"" (:y1 %) "\" x2=\"" (:x2 %) "\" y2=\"" (:y2 %) "\" stroke-width=\"1\" stroke=\"black\" />\n") camino))
+        svg-content (clojure.string/join "" (map #(str "<line x1=\"" (:x1 %) "\" y1=\"" (:y1 %) "\" x2=\"" (:x2 %) "\" y2=\"" (:y2 %) "\" stroke-width=\"4\" stroke=\"black\" />\n") camino)) ; Aumenta el stroke-width a 2 y el color a negro
         svg-footer "</svg>"]
     (str svg-header svg-content svg-footer)))
 
-
+; FUNCION IMPURA: Esta función (junto con generar-svg) crea el archivo ".SVG" en base al texto generado para el mismo.
+; Es impura porque tiene contacto con el exterior (el SVG).
 (defn guardar-svg-en-archivo [camino nombre-archivo]
   (let [contenido-svg (generar-svg camino 0)]
     (spit nombre-archivo contenido-svg)))
+
+(defn -main
+  [& args]
+  (if (< (count args) 3)
+    (println "Por favor, proporciona el nombre del archivo, el numero de iteraciones y el nombre del archivo SVG a generar como argumentos.")
+    (let [nombre-archivo (nth args 0)
+          iteraciones (Integer/parseInt (nth args 1))
+          nombre-archivo-svg (nth args 2)
+          ruta-archivo (str "doc/" nombre-archivo)]
+      (if (and nombre-archivo iteraciones nombre-archivo-svg)
+        (do
+          (let [informacion-parseada (leer-archivo ruta-archivo)
+                [angulo estado-inicial reglas] informacion-parseada]
+            (let [estado-final (iteraciones-sistema-l estado-inicial reglas iteraciones)]
+              (let [camino-final (procesar-comandos estado-final angulo)]
+                (guardar-svg-en-archivo camino-final (str (clojure.java.io/file (clojure.java.io/file ruta-archivo) ".." nombre-archivo-svg)))
+                (println "Imagen generada de forma exitosa.")))))))))
