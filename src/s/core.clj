@@ -4,8 +4,7 @@
             [clojure.string :as str]))
 
 ; Esta función parsea las líneas del archivo, extrae el ángulo (como double), el estado inicial y las reglas.
-(defn parsear-lineas
-  [lineas]
+(defn parsear-lineas [lineas]
   (let [angulo (Double/parseDouble (first lineas))
         estado-inicial (second lineas)
         reglas (apply hash-map (mapcat #(str/split % #" ") (drop 2 lineas)))]
@@ -13,20 +12,17 @@
 
 ; FUNCION IMPURA! Esta función abre el archivo, lo lee e invoca a la función de parseo.
 ; Es impura porque tiene contacto con el exterior (el archivo).
-(defn leer-archivo
-  [ruta-archivo]
+(defn leer-archivo [ruta-archivo]
   (with-open [rdr (io/reader ruta-archivo)]
     (let [lineas (line-seq rdr)]
       (parsear-lineas lineas))))
 
 ; Esta función aplica las reglas de conversión al estado actual.
-(defn aplicar-reglas
-  [estado reglas]
+(defn aplicar-reglas [estado reglas]
   (apply str (map (fn [c] (get reglas (str c) (str c))) estado)))
 
 ; Esta función realiza las iteraciones del sistema-L.
-(defn iteraciones-sistema-l
-  [estado-inicial reglas iteraciones]
+(defn iteraciones-sistema-l [estado-inicial reglas iteraciones]
   (loop [estado-actual estado-inicial
          n iteraciones]
     (if (zero? n)
@@ -42,11 +38,8 @@
 
 ; Crea una tortuga nueva a partir de la original.
 (defn crear-tortuga [tortuga]
-  (let [nueva-tortuga (assoc tortuga
-                        :x (:x tortuga)
-                        :y (:y tortuga)
-                        :angulo (:angulo tortuga))]
-    nueva-tortuga))
+  (let [{:keys [x y angulo]} tortuga]
+    (->Tortuga x y angulo)))
 
 ; Hace el avance de la tortuga en relación al ángulo actual de la misma.
 (defn avanzar [tortuga n]
@@ -59,11 +52,11 @@
 
 ; Cambia el ángulo de la tortuga hacia la derecha.
 (defn gira-derecha [tortuga angulo]
-  (assoc tortuga :angulo (- (:angulo tortuga) angulo)))
+  (assoc tortuga :angulo (+ (:angulo tortuga) angulo)))
 
 ; Cambia el ángulo de la tortuga hacia la izquierda.
 (defn gira-izquierda [tortuga angulo]
-  (assoc tortuga :angulo (+ (:angulo tortuga) angulo)))
+  (assoc tortuga :angulo (- (:angulo tortuga) angulo)))
 
 ; Actualiza el camino actual que "pinto" la tortuga.
 (defn actualizar-camino [tortuga nueva-tortuga camino]
@@ -112,7 +105,7 @@
   (let [[min-x max-x min-y max-y] (calcular-limites camino margen)
         view-box (str min-x " " min-y " " (- max-x min-x) " " (- max-y min-y))
         svg-header (str "<svg viewBox=\"" view-box "\" xmlns=\"http://www.w3.org/2000/svg\">")
-        svg-content (clojure.string/join "" (map #(str "<line x1=\"" (:x1 %) "\" y1=\"" (:y1 %) "\" x2=\"" (:x2 %) "\" y2=\"" (:y2 %) "\" stroke-width=\"4\" stroke=\"black\" />\n") camino)) ; Aumenta el stroke-width a 2 y el color a negro
+        svg-content (clojure.string/join "" (map #(str "<line x1=\"" (:x1 %) "\" y1=\"" (:y1 %) "\" x2=\"" (:x2 %) "\" y2=\"" (:y2 %) "\" stroke-width=\"4\" stroke=\"black\" />\n") camino))
         svg-footer "</svg>"]
     (str svg-header svg-content svg-footer)))
 
@@ -129,12 +122,13 @@
     (let [nombre-archivo (nth args 0)
           iteraciones (Integer/parseInt (nth args 1))
           nombre-archivo-svg (nth args 2)
-          ruta-archivo (str "doc/" nombre-archivo)]
+          ruta-archivo (io/file "doc" nombre-archivo)
+          ruta-svg (io/file (.getParent ruta-archivo) nombre-archivo-svg)]
       (if (and nombre-archivo iteraciones nombre-archivo-svg)
         (do
           (let [informacion-parseada (leer-archivo ruta-archivo)
-                [angulo estado-inicial reglas] informacion-parseada]
-            (let [estado-final (iteraciones-sistema-l estado-inicial reglas iteraciones)]
-              (let [camino-final (procesar-comandos estado-final angulo)]
-                (guardar-svg-en-archivo camino-final (str (clojure.java.io/file (clojure.java.io/file ruta-archivo) ".." nombre-archivo-svg)))
-                (println "Imagen generada de forma exitosa.")))))))))
+                [angulo estado-inicial reglas] informacion-parseada
+                estado-final (iteraciones-sistema-l estado-inicial reglas iteraciones)
+                camino-final (procesar-comandos estado-final angulo)]
+                (guardar-svg-en-archivo camino-final ruta-svg)
+                (println "Imagen generada de forma exitosa.")))))))
