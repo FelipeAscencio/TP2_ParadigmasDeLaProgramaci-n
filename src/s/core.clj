@@ -3,19 +3,26 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]))
 
-;Defino constantes
+; Constantes utilizadas
 (def ^:const AVANCE 100)
 (def ^:const ANGULO-INICIAL 270)
+(def ^:const CAMBIO-SENTIDO 180)
 (def ^:const ARGUMENTOS-REQUERIDOS 3)
 (def ^:const ARG-ARCHIVO 0)
 (def ^:const ARG-ITERACIONES 1)
 (def ^:const ARG-ARCHIVO-SVG 2)
+(def ^:const LINEAS 2)
+(def ^:const POS-INICIAL 0)
+(def ^:const MARGEN-INICIAL 0)
+
+; Estructura de la tortuga.
+(defrecord Tortuga [x y angulo])
 
 ; Esta función parsea las líneas del archivo, extrae el ángulo (como double), el estado inicial y las reglas.
 (defn parsear-lineas [lineas]
   (let [angulo (Double/parseDouble (first lineas))
         estado-inicial (second lineas)
-        reglas (apply hash-map (mapcat #(str/split % #" ") (drop 2 lineas)))]
+        reglas (apply hash-map (mapcat #(str/split % #" ") (drop LINEAS lineas)))]
     [angulo estado-inicial reglas]))
 
 ; FUNCION IMPURA! Esta función abre el archivo, lo lee e invoca a la función de parseo.
@@ -37,12 +44,9 @@
       estado-actual
       (recur (aplicar-reglas estado-actual reglas) (dec n)))))
 
-; Estructura de la tortuga.
-(defrecord Tortuga [x y angulo])
-
 ; Crea la tortuga inicial.
 (defn crear-tortuga-inicial []
-  (->Tortuga 0 0 ANGULO-INICIAL))
+  (->Tortuga POS-INICIAL POS-INICIAL ANGULO-INICIAL))
 
 ; Crea una tortuga nueva a partir de la original.
 (defn crear-tortuga [tortuga]
@@ -82,7 +86,7 @@
       (= comando \-) [(conj (rest tortugas) (gira-izquierda tortuga angulo)) camino]
       (= comando \[) [(conj tortugas (crear-tortuga tortuga)) camino]
       (= comando \]) [(pop tortugas) camino]
-      (= comando \|) [(conj (rest tortugas) (gira-derecha tortuga 180)) camino]
+      (= comando \|) [(conj (rest tortugas) (gira-derecha tortuga CAMBIO-SENTIDO)) camino]
       :else [tortugas camino])))
 
 ; Función para procesar los comandos generados por el sistema-L y obtener el camino final.
@@ -118,7 +122,7 @@
 ; FUNCION IMPURA: Esta función (junto con generar-svg) crea el archivo ".SVG" en base al texto generado para el mismo.
 ; Es impura porque tiene contacto con el exterior (el SVG).
 (defn guardar-svg-en-archivo [camino nombre-archivo]
-  (let [contenido-svg (generar-svg camino 0)]
+  (let [contenido-svg (generar-svg camino MARGEN-INICIAL)]
     (spit nombre-archivo contenido-svg)))
 
 (defn -main
