@@ -3,6 +3,14 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]))
 
+;Defino constantes
+(def ^:const AVANCE 100)
+(def ^:const ANGULO-INICIAL 270)
+(def ^:const ARGUMENTOS-REQUERIDOS 3)
+(def ^:const ARG-ARCHIVO 0)
+(def ^:const ARG-ITERACIONES 1)
+(def ^:const ARG-ARCHIVO-SVG 2)
+
 ; Esta función parsea las líneas del archivo, extrae el ángulo (como double), el estado inicial y las reglas.
 (defn parsear-lineas [lineas]
   (let [angulo (Double/parseDouble (first lineas))
@@ -34,7 +42,7 @@
 
 ; Crea la tortuga inicial.
 (defn crear-tortuga-inicial []
-  (->Tortuga 0 0 270))
+  (->Tortuga 0 0 ANGULO-INICIAL))
 
 ; Crea una tortuga nueva a partir de la original.
 (defn crear-tortuga [tortuga]
@@ -67,11 +75,9 @@
   (let [tortuga (first tortugas)]
     (cond
       (#{\F \G} comando)
-      (let [nueva-tortuga (avanzar tortuga 100)]
+      (let [nueva-tortuga (avanzar tortuga AVANCE)]
         [(conj (rest tortugas) nueva-tortuga) (actualizar-camino tortuga nueva-tortuga camino)])
-      (#{\f \g} comando)
-      (let [nueva-tortuga (avanzar tortuga 100)]
-        [(conj (rest tortugas) nueva-tortuga) camino])
+      (#{\f \g} comando) [(conj (rest tortugas) (avanzar tortuga AVANCE)) camino]
       (= comando \+) [(conj (rest tortugas) (gira-derecha tortuga angulo)) camino]
       (= comando \-) [(conj (rest tortugas) (gira-izquierda tortuga angulo)) camino]
       (= comando \[) [(conj tortugas (crear-tortuga tortuga)) camino]
@@ -117,11 +123,11 @@
 
 (defn -main
   [& args]
-  (if (< (count args) 3)
+  (if (< (count args) ARGUMENTOS-REQUERIDOS)
     (println "Por favor, proporciona el nombre del archivo, el numero de iteraciones y el nombre del archivo SVG a generar como argumentos.")
-    (let [nombre-archivo (nth args 0)
-          iteraciones (Integer/parseInt (nth args 1))
-          nombre-archivo-svg (nth args 2)
+    (let [nombre-archivo (nth args ARG-ARCHIVO)
+          iteraciones (Integer/parseInt (nth args ARG-ITERACIONES))
+          nombre-archivo-svg (nth args ARG-ARCHIVO-SVG)
           ruta-archivo (io/file "doc" nombre-archivo)
           ruta-svg (io/file (.getParent ruta-archivo) nombre-archivo-svg)]
       (if (and nombre-archivo iteraciones nombre-archivo-svg)
